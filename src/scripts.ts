@@ -1,0 +1,115 @@
+// src/scripts.ts
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+/**
+ * Minimal interface to support SCRIPT LOAD.
+ * ioredis supports: redis.script("load", src)
+ */
+export interface ScriptLoader {
+  scriptLoad(script: string): Promise<string>;
+}
+
+export interface ScriptDef {
+  sha: string;
+  src: string;
+}
+
+export interface OmniqScripts {
+  enqueue: ScriptDef;
+  reserve: ScriptDef;
+  ack_success: ScriptDef;
+  ack_fail: ScriptDef;
+  promote_delayed: ScriptDef;
+  reap_expired: ScriptDef;
+  heartbeat: ScriptDef;
+  pause: ScriptDef;
+  resume: ScriptDef;
+  retry_failed: ScriptDef;
+  retry_failed_batch: ScriptDef;
+  remove_job: ScriptDef;
+  remove_jobs_batch: ScriptDef;
+  childs_init: ScriptDef;
+  child_ack: ScriptDef;
+}
+
+/**
+ * Safely obtain import.meta.url at runtime (works around CJS builds).
+ */
+function _importMetaUrl(): string | null {
+  try {
+    // evaluated at runtime, not at bundle-time
+    return new Function("return import.meta.url")() as string;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Best-effort module directory for both ESM and CJS bundles.
+ */
+function moduleDirname(): string {
+  // Some bundlers inject __dirname on globalThis
+  const gd = (globalThis as any).__dirname;
+  if (typeof gd === "string" && gd.length > 0) return gd;
+
+  // CJS runtime
+  // @ts-ignore
+  if (typeof __dirname === "string" && __dirname.length > 0) return __dirname;
+
+  // ESM runtime
+  const imu = _importMetaUrl();
+  if (!imu) return process.cwd();
+  return path.dirname(fileURLToPath(imu));
+}
+
+/**
+ * Default scripts dir: ./src/core/scripts (repo consistency)
+ *
+ * Resolution order:
+ * 1) relative to this module: <moduleDir>/core/scripts
+ *    - in dev: src/core/scripts
+ *    - in build: dist/core/scripts (if scripts copied there)
+ * 2) from CWD: ./src/core/scripts
+ */
+export function defaultScriptsDir(): string {
+  const from = moduleDirname();
+
+  const cand1 = path.resolve(from, "core", "scripts");
+  if (fs.existsSync(path.join(cand1, "enqueue.lua"))) return cand1;
+
+  const cand2 = path.resolve(process.cwd(), "src", "core", "scripts");
+  if (fs.existsSync(path.join(cand2, "enqueue.lua"))) return cand2;
+
+  // last resort: keep behavior predictable
+  return cand1;
+}
+
+async function loadOne(loader: ScriptLoader, scriptsDir: string, name: string): Promise<ScriptDef> {
+  const p = path.join(scriptsDir, name);
+  const src = fs.readFileSync(p, "utf8");
+  const sha = await loader.scriptLoad(src);
+  return { sha, src };
+}
+
+export async function loadScripts(loader: ScriptLoader, scriptsDir: string): Promise<OmniqScripts> {
+  return {
+    enqueue: await loadOne(loader, scriptsDir, "enqueue.lua"),
+    reserve: await loadOne(loader, scriptsDir, "reserve.lua"),
+    ack_success: await loadOne(loader, scriptsDir, "ack_success.lua"),
+    ack_fail: await loadOne(loader, scriptsDir, "ack_fail.lua"),
+    promote_delayed: await loadOne(loader, scriptsDir, "promote_delayed.lua"),
+    reap_expired: await loadOne(loader, scriptsDir, "reap_expired.lua"),
+    heartbeat: await loadOne(loader, scriptsDir, "heartbeat.lua"),
+    pause: await loadOne(loader, scriptsDir, "pause.lua"),
+    resume: await loadOne(loader, scriptsDir, "resume.lua"),
+    retry_failed: await loadOne(loader, scriptsDir, "retry_failed.lua"),
+    retry_failed_batch: await loadOne(loader, scriptsDir, "retry_failed_batch.lua"),
+    remove_job: await loadOne(loader, scriptsDir, "remove_job.lua"),
+    remove_jobs_batch: await loadOne(loader, scriptsDir, "remove_jobs_batch.lua"),
+    childs_init: await loadOne(loader, scriptsDir, "childs_init.lua"),
+    child_ack: await loadOne(loader, scriptsDir, "child_ack.lua"),
+  };
+}

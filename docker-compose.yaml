@@ -1,0 +1,35 @@
+services:
+  omniq-redis:
+    image: redis:7.4-alpine
+    container_name: omniq-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  omniq-valkey:
+    image: valkey/valkey:9-alpine
+    container_name: omniq-valkey
+    ports:
+      - "6380:6379"
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+
+  omniq-node:
+    image: node:22-alpine
+    container_name: omniq-node
+    working_dir: /app
+    environment:
+      NODE_ENV: "development"
+    volumes:
+      - ./:/app
+    depends_on:
+      - omniq-redis
+      - omniq-valkey
+    command: ["sh", "-lc", "tail -f /dev/null"]
+
+volumes:
+  redis_data:
+  valkey_data:

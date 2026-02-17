@@ -1,0 +1,65 @@
+{
+  "name": "omniq-node",
+  "version": "1.0.0",
+  "description": "TS / Node.js library for OmniQ, the language agnostic queue ecosystem with parallel limits, draining and much more. Publish and consume in your favorite language like Python, Go, Node (TS or Vanilla), PHP and any other you want to.",
+  "sideEffects": false,
+  "type": "module",
+  "files": [
+    "dist",
+    "src/core/scripts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap --out-dir dist --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --sourcemap --out-dir dist --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/not-empty/omniq-node.git"
+  },
+  "author": "https://github.com/not-empty",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/not-empty/omniq-node/issues"
+  },
+  "homepage": "https://github.com/not-empty/omniq-node#readme",
+  "keywords": [
+    "omniq",
+    "redis queue",
+    "redis job queue",
+    "valkey queue",
+    "background processing",
+    "distributed workers",
+    "task processing",
+    "job scheduling",
+    "redis lua queue",
+    "lease queue",
+    "fifo queue",
+    "grouped queue",
+    "concurrent workers",
+    "node redis driver",
+    "typescript redis"
+  ],
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "ioredis": "^5.9.3",
+    "ulid": "^3.0.2"
+  }
+}
