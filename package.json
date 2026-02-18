@@ -1,6 +1,6 @@
 {
   "name": "omniq",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "TS / Node.js library for OmniQ, the language agnostic queue ecosystem with parallel limits, draining and much more. Publish and consume in your favorite language like Python, Go, Node (TS or Vanilla), PHP and any other you want to.",
   "sideEffects": false,
   "type": "module",
