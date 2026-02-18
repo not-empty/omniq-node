@@ -18,19 +18,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm
+        run: npm i -g npm@latest
+
+      - name: Versions
+        run: node -v && npm -v
 
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
 
-      - name: Verify package contents
-        run: |
-          npm pack
-          tar -tf *.tgz | sed -n '1,200p'
-
-      - name: Publish (OIDC)
-        env:
-          NODE_AUTH_TOKEN: ""
-          NPM_CONFIG_USERCONFIG: ""
-        run: npm publish --provenance
+      - name: Publish (Trusted Publishing)
+        uses: npm/action-publish@v1
+        with:
+          provenance: true
