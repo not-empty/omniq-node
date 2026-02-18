@@ -1,6 +1,3 @@
-// examples/childs/consumer2.ts
-// Pages consumer: processes a page job and child-acks completion counter.
-
 import { OmniqClient } from "../../src/index.js";
 import type { JobCtx } from "../../src/types.js";
 

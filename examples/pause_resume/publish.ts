@@ -1,6 +1,4 @@
-// examples/simple/publisher.ts
 import { OmniqClient } from "../../src/index.ts";
-
 
 async function main() {
   const redis_url = "redis://omniq-redis:6379/0"

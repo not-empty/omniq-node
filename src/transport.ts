@@ -1,15 +1,8 @@
-// src/transport.ts
-
 import * as IORedisNS from "ioredis";
 import type { Redis as RedisClient, Cluster as ClusterClient } from "ioredis";
 
 export type RedisArg = string | number | Buffer;
 
-/**
- * Constructable constructor reference across ESM/CJS builds.
- * - In some setups: import * as ns => ns.default is the ctor
- * - In others: ns itself is the ctor
- */
 const RedisCtor: any = (IORedisNS as any).default ?? (IORedisNS as any);
 
 export type RedisLike = RedisClient | ClusterClient;
@@ -23,7 +16,6 @@ export interface RedisConnOpts {
   password?: string;
   ssl?: boolean;
 
-  // ioredis uses milliseconds for timeouts
   socket_timeout_ms?: number;
   socket_connect_timeout_ms?: number;
 
@@ -61,7 +53,6 @@ export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> 
 
   const tls = ssl ? {} : undefined;
 
-  // URL => standalone
   if (redis_url && !cluster) {
     const r: RedisClient = new RedisCtor(redis_url, {
       connectTimeout: socket_connect_timeout_ms,
@@ -74,7 +65,6 @@ export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> 
     throw new Error("RedisConnOpts requires host (or redis_url / cluster_nodes)");
   }
 
-  // Cluster mode (best-effort)
   if (cluster) {
     const seeds =
       cluster_nodes && cluster_nodes.length > 0
@@ -99,11 +89,9 @@ export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> 
       try {
         await c.quit();
       } catch {}
-      // fall through to standalone
     }
   }
 
-  // Standalone host/port
   const r: RedisClient = new RedisCtor({
     host,
     port,
@@ -118,9 +106,6 @@ export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> 
   return r;
 }
 
-/**
- * Adapter used by scripts.ts (mirrors Python r.script_load()).
- */
 export function makeScriptLoader(r: RedisLike): { scriptLoad(script: string): Promise<string> } {
   return {
     async scriptLoad(script: string): Promise<string> {

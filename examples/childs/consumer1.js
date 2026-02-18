@@ -1,6 +1,3 @@
-// examples/childs/consumer1.js
-// Documents consumer: initializes childs completion + publishes page jobs.
-
 import { OmniqClient } from "../../dist/index.js";
 
 async function documentWorker(ctx) {

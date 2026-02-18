@@ -1,4 +1,3 @@
-// examples/simple/publisher.js
 import { OmniqClient } from "../../dist/index.js";
 
 async function main() {

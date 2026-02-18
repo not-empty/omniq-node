@@ -1,5 +1,3 @@
-// src/types.ts
-
 export type PayloadT = Record<string, any> | any[] | string;
 
 export interface JobCtx {
@@ -13,8 +11,8 @@ export interface JobCtx {
   lock_until_ms: number;
   lease_token: string;
 
-  gid?: string; // default ""
-  exec?: any;   // default null/undefined
+  gid?: string;
+  exec?: any;
 }
 
 export interface ReservePaused {

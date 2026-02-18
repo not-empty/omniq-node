@@ -1,10 +1,8 @@
-// src/client.ts
-
 import type { RedisLike, RedisConnOpts } from "./transport.js";
 import { buildRedisClient, makeScriptLoader } from "./transport.js";
 
 import { defaultScriptsDir, loadScripts } from "./scripts.js";
-import { queueBase } from "./helper.js";
+import { queueBase, isPlainObject } from "./helper.js";
 
 import type {
   JobCtx,
@@ -18,10 +16,7 @@ import { OmniqOps } from "./ops.js";
 import { consume as consumeLoop } from "./consumer.js";
 
 export interface OmniqClientOpts extends RedisConnOpts {
-  /** Provide an already-created ioredis client (Redis or Cluster). */
   redis?: RedisLike;
-
-  /** Override scripts dir; default is ./src/core/scripts */
   scriptsDir?: string;
 }
 
@@ -32,7 +27,6 @@ export class OmniqClient {
     this._ops = ops;
   }
 
-  /** Async factory (Node loads scripts async). Mirrors Python constructor behavior. */
   static async create(opts: OmniqClientOpts = {}): Promise<OmniqClient> {
     const r = opts.redis ?? (await buildRedisClient(opts));
 
@@ -45,8 +39,6 @@ export class OmniqClient {
   static queueBase(queueName: string): string {
     return queueBase(queueName);
   }
-
-  // --- API mirrors Python (async in Node) ---
 
   async publish(args: {
     queue: string;
@@ -61,6 +53,53 @@ export class OmniqClient {
     now_ms_override?: number;
   }): Promise<string> {
     return await this._ops.publish(args);
+  }
+
+  async publishJson(args: {
+    queue: string;
+    payload: any;
+    job_id?: string;
+    max_attempts?: number;
+    timeout_ms?: number;
+    backoff_ms?: number;
+    due_ms?: number;
+    gid?: string | null;
+    group_limit?: number;
+    now_ms_override?: number;
+  }): Promise<string> {
+    const { payload } = args;
+
+    if (payload === undefined || payload === null) {
+      throw new TypeError("publishJson(payload=...) is required");
+    }
+
+    if (isPlainObject(payload) || Array.isArray(payload)) {
+      return await this.publish(args);
+    }
+
+    let normalized: any;
+    try {
+      const s = JSON.stringify(payload);
+      if (s === undefined) {
+        throw new TypeError("payload is not JSON-serializable");
+      }
+      normalized = JSON.parse(s);
+    } catch (e: any) {
+      throw new TypeError(
+        `publishJson(payload=...): failed to convert payload to structured JSON: ${e?.message ?? String(e)}`
+      );
+    }
+
+    if (!(isPlainObject(normalized) || Array.isArray(normalized))) {
+      throw new TypeError(
+        "publishJson(payload=...) must convert to a plain object or array (structured JSON). " +
+          "Wrap scalars as {value: ...} or {text: '...'}."
+      );
+    }
+    return await this._ops.publish({
+      ...args,
+      payload: normalized,
+    });
   }
 
   async reserve(args: { queue: string; now_ms_override?: number }): Promise<ReserveResult> {
@@ -155,10 +194,6 @@ export class OmniqClient {
     return await this._ops.child_ack(args);
   }
 
-  /**
-   * Consume loop (mirrors Python client.consume).
-   * Handler can be sync or async.
-   */
   async consume(args: {
     queue: string;
     handler: (ctx: JobCtx) => void | Promise<void>;
@@ -195,7 +230,7 @@ export class OmniqClient {
     } = args;
 
     return await consumeLoop({
-      ops: this._ops,
+      client: this,
       queue,
       handler,
       poll_interval_s,
@@ -210,8 +245,7 @@ export class OmniqClient {
       stop_on_ctrl_c,
     });
   }
-
-  /** Expose ops like Python */
+  
   get ops(): OmniqOps {
     return this._ops;
   }

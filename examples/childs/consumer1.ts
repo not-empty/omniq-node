@@ -1,6 +1,3 @@
-// examples/childs/consumer1.ts
-// Documents consumer: initializes childs completion + publishes page jobs.
-
 import { OmniqClient } from "../../src/index.js";
 import type { JobCtx } from "../../src/types.js";
 

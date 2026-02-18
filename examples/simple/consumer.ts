@@ -1,4 +1,3 @@
-// examples/simple/consumer.ts
 import { OmniqClient } from "../../src/index.ts";
 import type { JobCtx } from "../../src/types.ts";
 

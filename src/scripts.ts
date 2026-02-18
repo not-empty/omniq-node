@@ -1,13 +1,7 @@
-// src/scripts.ts
-
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * Minimal interface to support SCRIPT LOAD.
- * ioredis supports: redis.script("load", src)
- */
 export interface ScriptLoader {
   scriptLoad(script: string): Promise<string>;
 }
@@ -35,45 +29,24 @@ export interface OmniqScripts {
   child_ack: ScriptDef;
 }
 
-/**
- * Safely obtain import.meta.url at runtime (works around CJS builds).
- */
 function _importMetaUrl(): string | null {
   try {
-    // evaluated at runtime, not at bundle-time
     return new Function("return import.meta.url")() as string;
   } catch {
     return null;
   }
 }
 
-/**
- * Best-effort module directory for both ESM and CJS bundles.
- */
 function moduleDirname(): string {
-  // Some bundlers inject __dirname on globalThis
   const gd = (globalThis as any).__dirname;
   if (typeof gd === "string" && gd.length > 0) return gd;
-
-  // CJS runtime
-  // @ts-ignore
   if (typeof __dirname === "string" && __dirname.length > 0) return __dirname;
 
-  // ESM runtime
   const imu = _importMetaUrl();
   if (!imu) return process.cwd();
   return path.dirname(fileURLToPath(imu));
 }
 
-/**
- * Default scripts dir: ./src/core/scripts (repo consistency)
- *
- * Resolution order:
- * 1) relative to this module: <moduleDir>/core/scripts
- *    - in dev: src/core/scripts
- *    - in build: dist/core/scripts (if scripts copied there)
- * 2) from CWD: ./src/core/scripts
- */
 export function defaultScriptsDir(): string {
   const from = moduleDirname();
 
@@ -83,7 +56,6 @@ export function defaultScriptsDir(): string {
   const cand2 = path.resolve(process.cwd(), "src", "core", "scripts");
   if (fs.existsSync(path.join(cand2, "enqueue.lua"))) return cand2;
 
-  // last resort: keep behavior predictable
   return cand1;
 }
 

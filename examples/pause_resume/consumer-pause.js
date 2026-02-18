@@ -1,4 +1,3 @@
-// examples/simple/consumer.js
 import { OmniqClient } from "../../dist/index.js";
 
 function sleep(ms) {

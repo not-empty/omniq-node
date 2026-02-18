@@ -1,13 +1,11 @@
-// src/exec.ts
-
-import type { OmniqOps } from "./ops.js";
+import type { OmniqClient } from "./client.js";
 
 export class Exec {
-  public readonly ops: OmniqOps;
+  public readonly client: OmniqClient;
   public readonly default_child_id: string;
 
-  constructor(args: { ops: OmniqOps; default_child_id: string }) {
-    this.ops = args.ops;
+  constructor(args: { client: OmniqClient; default_child_id: string }) {
+    this.client = args.client;
     this.default_child_id = args.default_child_id ?? "";
   }
 
@@ -22,7 +20,7 @@ export class Exec {
     gid?: string | null;
     group_limit?: number;
   }): Promise<string> {
-    return await this.ops.publish({
+    return await this.client.publish({
       queue: args.queue,
       payload: args.payload,
       job_id: args.job_id,
@@ -35,20 +33,35 @@ export class Exec {
     });
   }
 
+  async publishJson(args: {
+    queue: string;
+    payload: any;
+    job_id?: string;
+    max_attempts?: number;
+    timeout_ms?: number;
+    backoff_ms?: number;
+    due_ms?: number;
+    now_ms_override?: number;
+    gid?: string | null;
+    group_limit?: number;
+  }): Promise<string> {
+    return await this.client.publishJson(args);
+  }
+
   async pause(args: { queue: string }): Promise<string> {
-    return await this.ops.pause({ queue: args.queue });
+    return await this.client.pause({ queue: args.queue });
   }
 
   async resume(args: { queue: string }): Promise<number> {
-    return await this.ops.resume({ queue: args.queue });
+    return await this.client.resume({ queue: args.queue });
   }
 
   async is_paused(args: { queue: string }): Promise<boolean> {
-    return await this.ops.is_paused({ queue: args.queue });
+    return await this.client.is_paused({ queue: args.queue });
   }
 
   async childs_init(key: string, expected: number): Promise<void> {
-    await this.ops.childs_init({ key, expected: Math.trunc(expected) });
+    await this.client.childs_init({ key, expected: Math.trunc(expected) });
   }
 
   async child_ack(key: string, child_id?: string | null): Promise<number> {
@@ -56,7 +69,7 @@ export class Exec {
     if (!cid) {
       throw new Error("child_id is required (or provide default_child_id)");
     }
-    const n = await this.ops.child_ack({ key, child_id: cid });
+    const n = await this.client.child_ack({ key, child_id: cid });
     return Math.trunc(n);
   }
 }

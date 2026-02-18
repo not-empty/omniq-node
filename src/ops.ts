@@ -1,4 +1,3 @@
-// src/ops.ts
 import type { RedisLike } from "./transport.js";
 import type {
   AckFailResult,
@@ -12,12 +11,8 @@ import type { OmniqScripts } from "./scripts.js";
 
 import { nowMs } from "./clock.js";
 import { newUlid } from "./ids.js";
-import { queueAnchor, queueBase, childsAnchor } from "./helper.js";
+import { queueAnchor, queueBase, childsAnchor, isPlainObject } from "./helper.js";
 
-/**
- * Minimal async mutex for NOSCRIPT fallback.
- * We only need to serialize "EVAL" retries to avoid thundering-herd.
- */
 class AsyncMutex {
   private locked = false;
   private waiters: Array<() => void> = [];
@@ -42,7 +37,6 @@ class AsyncMutex {
 function isNoScriptError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const anyErr = err as any;
-  // ioredis: ReplyError with message like "NOSCRIPT No matching script. Please use EVAL."
   const msg = String(anyErr?.message ?? "");
   return msg.toUpperCase().includes("NOSCRIPT");
 }
@@ -62,14 +56,12 @@ export class OmniqOps {
     ...keysAndArgs: Array<string>
   ): Promise<any> {
     try {
-      // ioredis: evalsha(sha, numkeys, ...args)
       return await (this.r as any).evalsha(sha, numkeys, ...keysAndArgs);
     } catch (err) {
       if (!isNoScriptError(err)) throw err;
 
       const release = await OmniqOps._scriptMutex.lock();
       try {
-        // Fallback to EVAL to re-introduce script to cache
         return await (this.r as any).eval(src, numkeys, ...keysAndArgs);
       } finally {
         release();
@@ -102,11 +94,10 @@ export class OmniqOps {
       group_limit = 0,
     } = args;
 
-    const isObject =
-      payload !== null && typeof payload === "object" && !Array.isArray(payload);
-    const isArray = Array.isArray(payload);
+    const isObj = isPlainObject(payload);
+    const isArr = Array.isArray(payload);
 
-    if (!isObject && !isArray) {
+    if (!isObj && !isArr) {
       throw new TypeError(
         "publish(payload=...) must be an object or array (structured JSON). " +
           "Wrap strings as {text: '...'} or {value: '...'}."
@@ -342,12 +333,10 @@ export class OmniqOps {
     }
 
     if (res[0] === "RETRY") {
-      // Python returns ("RETRY", int(res[1]))
       return ["RETRY", Number(res[1]) | 0];
     }
 
     if (res[0] === "FAILED") {
-      // Python returns ("FAILED", None)
       return ["FAILED", null];
     }
 

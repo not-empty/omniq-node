@@ -1,9 +1,3 @@
-// src/helper.ts
-
-/**
- * Base key prefix for a queue.
- * Ensures Redis Cluster hash-tagging via {...}.
- */
 export function queueBase(queueName: string): string {
   if (queueName.includes("{") && queueName.includes("}")) {
     return queueName;
@@ -11,17 +5,10 @@ export function queueBase(queueName: string): string {
   return `{${queueName}}`;
 }
 
-/**
- * Anchor key used by Lua scripts.
- */
 export function queueAnchor(queueName: string): string {
   return `${queueBase(queueName)}:meta`;
 }
 
-/**
- * Convert any value to string.
- * Mirrors Python as_str().
- */
 export function asStr(v: unknown): string {
   if (v === null || v === undefined) return "";
 
@@ -32,13 +19,6 @@ export function asStr(v: unknown): string {
   return String(v);
 }
 
-/**
- * Anchor for child coordination.
- * Ensures:
- * - No { or }
- * - Max length constraint
- * - Stable cluster slot via {cc:key}
- */
 export function childsAnchor(key: string, maxLen = 128): string {
   const k = (key ?? "").trim();
 
@@ -55,4 +35,12 @@ export function childsAnchor(key: string, maxLen = 128): string {
   }
 
   return `{cc:${k}}:meta`;
+}
+
+export function isPlainObject(x: any): x is Record<string, any> {
+  if (x === null || typeof x !== "object") return false;
+  if (Array.isArray(x)) return false;
+
+  const proto = Object.getPrototypeOf(x);
+  return proto === Object.prototype || proto === null;
 }

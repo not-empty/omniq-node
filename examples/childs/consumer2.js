@@ -1,6 +1,3 @@
-// examples/childs/consumer2.js
-// Pages consumer: processes a page job and child-acks completion counter.
-
 import { OmniqClient } from "../../dist/index.js";
 
 function sleep(ms) {
