@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../src/index.ts";
+import { OmniqClient } from "omniq";
 
 class Customer {
   constructor(

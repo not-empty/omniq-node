@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../src/index.ts";
+import { OmniqClient } from "omniq";
 
 async function main() {
   const redis_url = "redis://omniq-redis:6379/0"
@@ -6,7 +6,7 @@ async function main() {
   const omniq = await OmniqClient.create({ redis_url });
 
   const job_id = await omniq.publish({
-    queue: "documents",
+    queue: "demo",
     payload: {
       document_id: "doc_123",
       pages: 5,

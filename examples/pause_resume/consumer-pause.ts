@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../src/index.ts";
+import { OmniqClient } from "omniq";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../dist/index.js";
+import { OmniqClient } from "omniq";
 
 async function main() {
   const redis_url = "redis://omniq-redis:6379/0"

@@ -1,5 +1,5 @@
-import { OmniqClient } from "../../src/index.js";
-import type { JobCtx } from "../../src/types.js";
+import { OmniqClient } from "omniq";
+import type { JobCtx } from "omniq";
 
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms));

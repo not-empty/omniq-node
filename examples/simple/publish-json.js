@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../dist/index.js";
+import { OmniqClient } from "omniq";
 
 class Payload {
   constructor() {

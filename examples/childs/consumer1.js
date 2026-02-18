@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../dist/index.js";
+import { OmniqClient } from "omniq";
 
 async function documentWorker(ctx) {
   const document_id = ctx?.payload?.document_id;

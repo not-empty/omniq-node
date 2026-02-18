@@ -47,16 +47,48 @@ function moduleDirname(): string {
   return path.dirname(fileURLToPath(imu));
 }
 
+function findPackageRoot(fromDir: string): string {
+  let cur = fromDir;
+
+  for (let i = 0; i < 25; i++) {
+    const pj = path.join(cur, "package.json");
+    if (fs.existsSync(pj)) return cur;
+
+    const parent = path.dirname(cur);
+    if (parent === cur) break;
+    cur = parent;
+  }
+
+  throw new Error(
+    `OmniQ: could not locate package.json starting from ${fromDir}. ` +
+    `This is required to resolve dist/core/scripts deterministically.`
+  );
+}
+
 export function defaultScriptsDir(): string {
+  const env = process.env.OMNIQ_SCRIPTS_DIR;
+  if (env && env.trim().length > 0) {
+    const p = path.resolve(env.trim());
+    if (!fs.existsSync(path.join(p, "enqueue.lua"))) {
+      throw new Error(`OMNIQ_SCRIPTS_DIR is set but enqueue.lua was not found at: ${p}`);
+    }
+    return p;
+  }
+
   const from = moduleDirname();
+  const root = findPackageRoot(from);
 
-  const cand1 = path.resolve(from, "core", "scripts");
-  if (fs.existsSync(path.join(cand1, "enqueue.lua"))) return cand1;
+  const distScripts = path.join(root, "dist", "core", "scripts");
 
-  const cand2 = path.resolve(process.cwd(), "src", "core", "scripts");
-  if (fs.existsSync(path.join(cand2, "enqueue.lua"))) return cand2;
+  if (!fs.existsSync(path.join(distScripts, "enqueue.lua"))) {
+    throw new Error(
+      `OmniQ scripts not found at: ${distScripts}\n` +
+      `Expected scripts to be copied into dist/core/scripts during build and published under dist/.\n` +
+      `Hint: ensure your build copies scripts and package.json includes "files": ["dist", ...].`
+    );
+  }
 
-  return cand1;
+  return distScripts;
 }
 
 async function loadOne(loader: ScriptLoader, scriptsDir: string, name: string): Promise<ScriptDef> {

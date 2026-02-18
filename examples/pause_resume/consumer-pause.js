@@ -1,4 +1,4 @@
-import { OmniqClient } from "../../dist/index.js";
+import { OmniqClient } from "omniq";
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));

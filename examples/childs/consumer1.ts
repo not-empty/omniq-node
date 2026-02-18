@@ -1,5 +1,5 @@
-import { OmniqClient } from "../../src/index.js";
-import type { JobCtx } from "../../src/types.js";
+import { OmniqClient } from "omniq";
+import type { JobCtx } from "omniq";
 
 async function documentWorker(ctx: JobCtx) {
   const document_id = (ctx.payload as any)?.document_id;
