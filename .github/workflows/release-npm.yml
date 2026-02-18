@@ -13,33 +13,24 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Install
-        run: npm ci
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
 
       - name: Verify package contents
         run: |
           npm pack
           tar -tf *.tgz | sed -n '1,200p'
 
-      - name: Ensure OIDC auth (remove token config)
-        run: |
-          rm -f ~/.npmrc /root/.npmrc || true
-          npm config delete //registry.npmjs.org/:_authToken || true
-
       - name: Publish (OIDC)
+        env:
+          NODE_AUTH_TOKEN: ""
+          NPM_CONFIG_USERCONFIG: ""
         run: npm publish --provenance
