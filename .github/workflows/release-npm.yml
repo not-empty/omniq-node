@@ -36,5 +36,10 @@ jobs:
           npm pack
           tar -tf *.tgz | sed -n '1,200p'
 
+      - name: Ensure OIDC auth (remove token config)
+        run: |
+          rm -f ~/.npmrc /root/.npmrc || true
+          npm config delete //registry.npmjs.org/:_authToken || true
+
       - name: Publish (OIDC)
         run: npm publish --provenance
