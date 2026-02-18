@@ -29,7 +29,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
+      - run: NODE_AUTH_TOKEN=""
+
       - name: Publish (Trusted Publishing)
-        uses: npm/action-publish@v1
-        with:
-          provenance: true
+      - run: npm publish --access public --provenance
