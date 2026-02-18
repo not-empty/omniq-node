@@ -29,7 +29,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
-      - run: NODE_AUTH_TOKEN=""
-
-      - name: Publish (Trusted Publishing)
-      - run: npm publish --access public --provenance
+      - name: Publish (Trusted Publishing / OIDC)
+        env:
+          NODE_AUTH_TOKEN: ""
+          NPM_CONFIG_USERCONFIG: ""
+        run: npm publish --provenance
