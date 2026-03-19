@@ -1,7 +1,7 @@
 # OmniQ (Node.js / TypeScript)
 
 **OmniQ** is a Redis + Lua, language-agnostic job queue.\
-This package is the **Node.js / TypeScript client** for OmniQ v1.
+This package is the **Node.js / TypeScript client** for OmniQ.
 
 Core project / docs: https://github.com/not-empty/omniq
 
