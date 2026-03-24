@@ -1,31 +1,29 @@
 # OmniQ (Node.js / TypeScript)
 
-**OmniQ** is a Redis + Lua, language-agnostic job queue.\
-This package is the **Node.js / TypeScript client** for OmniQ.
+**Node.js / TypeScript** client for **OmniQ**, a Redis-based distributed 
+job queue designed for deterministic, consumer-driven job execution and coordination.
+
+OmniQ executes queue logic directly inside Redis using Lua scripts, ensuring atomicity, 
+consistency, and predictable behavior across distributed systems.
+
+Instead of relying on transient message delivery, OmniQ maintains explicit job state 
+and coordination primitives inside Redis, allowing consumers to safely manage retries, 
+concurrency, ordering, and distributed execution.
+
+**The system is language-agnostic**, enabling producers and consumers written 
+in different runtimes to share the same execution model.
 
 Core project / docs: https://github.com/not-empty/omniq
 
 ------------------------------------------------------------------------
 
-## Key Ideas
+## Requirements
 
--   **Hybrid lanes**
-    -   Ungrouped jobs by default
-    -   Optional grouped jobs (FIFO per group + per-group concurrency)
--   **Lease-based execution**
-    -   Workers reserve a job with a time-limited lease
--   **Token-gated ACK / heartbeat**
-    -   `reserve()` returns a `lease_token`
-    -   `heartbeat()` and `ack_*()` must include the same token
--   **Pause / resume (flag-only)**
-    -   Pausing prevents *new reserves*
-    -   Running jobs are not interrupted
-    -   Jobs are not moved
--   **Admin-safe operations**
-    -   Strict `retry`, `retry_batch`, `remove`, `remove_batch`
--   **Handler-driven execution layer**
-    -   `ctx.exec` exposes internal OmniQ operations safely inside
-        handlers
+**To use OmniQ (Node):**
+- Node.js 18+
+- Redis >= 7.0
+- Lua scripting enabled in Redis
+- OmniQ scripts loaded into Redis
 
 ------------------------------------------------------------------------
 
@@ -34,6 +32,25 @@ Core project / docs: https://github.com/not-empty/omniq
 ``` bash
 npm install omniq-node
 ```
+
+------------------------------------------------------------------------
+
+## Features
+
+-   **Redis-native execution model**
+    -   All queue operations are executed atomically inside Redis via Lua
+-   **Consumer-driven processing**
+    -   Workers control reservation, execution, and completion lifecycle
+-   **Deterministic job lifecycle**
+    -   Explicit states such as wait, active, failed, and completed
+-   **Grouped jobs with concurrency control**
+    -   FIFO within groups and parallel execution across groups
+-   **Atomic administrative operations**
+    -   Retry, removal, pause, and batch operations with strong consistency guarantees
+-   **Parent/Child workflow primitive**
+    -   Fan-out execution with atomic completion tracking
+-   **Language-agnostic architecture**
+    -   Producers and consumers can run in different runtimes
 
 ------------------------------------------------------------------------
 
@@ -94,6 +111,10 @@ async function main() {
 main();
 ```
 
+**Handler behavior:**
+- Normal completion → job is completed
+- Throwing error → job is failed and retried if eligible
+
 ------------------------------------------------------------------------
 
 ## Handler Context
@@ -149,9 +170,124 @@ Properties:
 
 ------------------------------------------------------------------------
 
+
+# Administrative Operations
+
+All operations are atomic and executed via Redis Lua scripts.
+
+## Retry Failed Job
+
+```ts
+await omniq.retry_failed("demo", "jobId");
+```
+
+------------------------------------------------------------------------
+
+## Retry Failed Batch
+
+```ts
+const results = await omniq.retry_failed_batch(
+  "demo",
+  ["id1", "id2"]
+);
+```
+
+------------------------------------------------------------------------
+
+## Remove Job
+
+```ts
+await omniq.remove_job("demo", "jobId", "failed");
+```
+
+------------------------------------------------------------------------
+
+## Remove Jobs Batch
+
+```ts
+const results = await omniq.remove_jobs_batch(
+  "demo",
+  "failed",
+  ["id1", "id2"]
+);
+```
+
+------------------------------------------------------------------------
+
+## Pause / Resume / IsPaused
+
+```ts
+await omniq.pause("demo");
+const paused = await omniq.is_paused("demo");
+await omniq.resume("demo");
+```
+
+Pausing prevents new reservations; running jobs are not interrupted.
+
+------------------------------------------------------------------------
+
+## Parent / Child Workflows
+
+This primitive enables fan-out workflows, where a parent job distributes 
+work across multiple child jobs and tracks completion using an atomic 
+counter stored in Redis.
+
+Each child job acknowledges completion using a shared **completion key**. 
+The system guarantees idempotency, meaning retries or duplicate executions 
+do not corrupt the counter.
+
+When all child jobs complete, the counter reaches zero.
+
+### Parent Example
+
+```ts
+async function parentWorker(ctx: any) {
+  const { document_id, pages } = ctx.payload;
+
+  await ctx.exec.childs_init(document_id, pages);
+
+  for (let i = 0; i < pages; i++) {
+    await ctx.exec.publish({
+      queue: "pages",
+      payload: {
+        page: i,
+        completion_key: document_id,
+      },
+    });
+  }
+}
+```
+
+### Child Example
+
+```ts
+async function pageWorker(ctx: any) {
+  const { page, completion_key } = ctx.payload;
+
+  console.log(`Processing page ${page}`);
+
+  const remaining = await ctx.exec.child_ack(completion_key);
+
+  console.log("Remaining:", remaining);
+
+  if (remaining === 0) {
+    console.log("All child jobs completed.");
+  }
+}
+```
+
+### Properties
+
+* Idempotent decrement
+* Safe under retries
+* Cross-queue safe
+* Fully business-logic driven
+
+------------------------------------------------------------------------
+
 ## Grouped Jobs
 
-``` ts
+```ts
 await omniq.publish({
   queue: "demo",
   payload: { i: 1 },
@@ -165,12 +301,41 @@ await omniq.publish({
 });
 ```
 
--   FIFO inside group
--   Groups execute in parallel
--   Concurrency limited per group
+------------------------------------------------------------------------
+
+## Pause and Resume Inside a Handler
+
+```ts
+async function pauseExample(ctx: any) {
+  const paused = await ctx.exec.is_paused("test");
+  console.log("Is paused:", paused);
+
+  await ctx.exec.pause("test");
+
+  const paused2 = await ctx.exec.is_paused("test");
+  console.log("Is paused:", paused2);
+
+  await ctx.exec.resume("test");
+}
+```
+
+------------------------------------------------------------------------
+
+## Best Practices
+
+1. Always implement idempotent handlers
+2. Tune lease duration carefully to avoid duplication
+3. Size Redis according to workload
+
+------------------------------------------------------------------------
+
+## Examples
+
+See the `./examples` folder.
 
 ------------------------------------------------------------------------
 
 ## License
 
 See repository license.
+
