@@ -31,7 +31,13 @@ export interface ReserveJob {
 
 export type AckFailResult = ["RETRY" | "FAILED", number | null];
 
-export type BatchRemoveResult = Array<[string, string, string | null]>;
-export type BatchRetryFailedResult = Array<[string, string, string | null]>;
+export interface BatchResultItem {
+  job_id: string;
+  status: string;
+  reason: string | null;
+}
+
+export type BatchRemoveResult = BatchResultItem[];
+export type BatchRetryFailedResult = BatchResultItem[];
 
 export type ReserveResult = null | ReservePaused | ReserveJob;

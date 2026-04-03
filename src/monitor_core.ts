@@ -197,8 +197,6 @@ export class QueueMonitorCore {
     stop: number,
     reverse = false
   ): Promise<Array<[string, unknown]>> {
-    const opts = { WITHSCORES: true };
-
     const parseRows = (rows: unknown): Array<[string, unknown]> => {
       if (!Array.isArray(rows)) {
         return [];
@@ -229,17 +227,17 @@ export class QueueMonitorCore {
 
     if (reverse) {
       if (typeof this._r.zRevRange === "function") {
-        return parseRows(await this._r.zRevRange(key, start, stop, opts));
+        return parseRows(await this._r.zRevRange(key, start, stop, { WITHSCORES: true }));
       }
       if (typeof this._r.zrevrange === "function") {
-        return parseRows(await this._r.zrevrange(key, start, stop, opts));
+        return parseRows(await (this._r as any).zrevrange(key, start, stop, "WITHSCORES"));
       }
     } else {
       if (typeof this._r.zRange === "function") {
-        return parseRows(await this._r.zRange(key, start, stop, opts));
+        return parseRows(await this._r.zRange(key, start, stop, { WITHSCORES: true }));
       }
       if (typeof this._r.zrange === "function") {
-        return parseRows(await this._r.zrange(key, start, stop, opts));
+        return parseRows(await (this._r as any).zrange(key, start, stop, "WITHSCORES"));
       }
     }
 
@@ -267,6 +265,15 @@ export class QueueMonitorCore {
       return await this._hgetall(key);
     } catch {
       return null;
+    }
+  }
+
+  private async _isGroupReady(base: string, gid: string): Promise<boolean> {
+    try {
+      const score = await this._zscore(this._readyKey(base), gid);
+      return score !== null && score !== undefined;
+    } catch {
+      return false;
     }
   }
 
@@ -424,8 +431,6 @@ export class QueueMonitorCore {
     const base = this._base(queue);
     const fallbackLimit = Math.max(1, Math.trunc(default_limit));
     const normalizedGids = gids.map((gid) => asString(gid)).filter((gid) => gid !== "").slice(0, MAX_GROUP_LIMIT);
-    const readySet = new Set(await this.groups_ready({ queue, limit: Math.max(normalizedGids.length, 1) }));
-
     const out: GroupStatus[] = [];
 
     for (const gid of normalizedGids) {
@@ -455,7 +460,7 @@ export class QueueMonitorCore {
         gid,
         inflight,
         limit: rawLimit > 0 ? rawLimit : fallbackLimit,
-        ready: readySet.has(gid),
+        ready: await this._isGroupReady(base, gid),
         waiting_count: waitingCount,
       });
     }
