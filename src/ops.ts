@@ -41,6 +41,11 @@ function isNoScriptError(err: unknown): boolean {
   return msg.toUpperCase().includes("NOSCRIPT");
 }
 
+function toInt(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
 export class OmniqOps {
   private static _scriptMutex = new AsyncMutex();
 
@@ -211,8 +216,8 @@ export class OmniqOps {
       status: "JOB",
       job_id: String(res[1]),
       payload: String(res[2]),
-      lock_until_ms: Number(res[3]) | 0,
-      attempt: Number(res[4]) | 0,
+      lock_until_ms: toInt(res[3]),
+      attempt: toInt(res[4]),
       gid: String(res[5] ?? ""),
       lease_token: String(res[6] ?? ""),
     };
@@ -246,7 +251,7 @@ export class OmniqOps {
     }
 
     if (res[0] === "OK") {
-      return Number(res[1]) | 0;
+      return toInt(res[1]);
     }
 
     if (res[0] === "ERR") {
@@ -333,7 +338,7 @@ export class OmniqOps {
     }
 
     if (res[0] === "RETRY") {
-      return ["RETRY", Number(res[1]) | 0];
+      return ["RETRY", toInt(res[1])];
     }
 
     if (res[0] === "FAILED") {
@@ -371,7 +376,7 @@ export class OmniqOps {
       throw new Error(`Unexpected PROMOTE_DELAYED response: ${JSON.stringify(res)}`);
     }
 
-    return Number(res[1]) | 0;
+    return toInt(res[1]);
   }
 
   async reap_expired(args: {
@@ -397,7 +402,7 @@ export class OmniqOps {
       throw new Error(`Unexpected REAP_EXPIRED response: ${JSON.stringify(res)}`);
     }
 
-    return Number(res[1]) | 0;
+    return toInt(res[1]);
   }
 
   async job_timeout_ms(args: {
@@ -495,7 +500,7 @@ export class OmniqOps {
       } else {
         i += 2;
       }
-      out.push([job_id, status, reason]);
+      out.push({ job_id, status, reason });
     }
 
     return out;
@@ -579,7 +584,7 @@ export class OmniqOps {
       } else {
         i += 2;
       }
-      out.push([job_id, status, reason]);
+      out.push({ job_id, status, reason });
     }
 
     return out;

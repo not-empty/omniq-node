@@ -169,8 +169,8 @@ export async function consume(args: {
       ctrl.stop = true;
       if (verbose) safeLog(logger, `[consume] Ctrl+C received; draining current job then exiting. queue=${queue}`);
     } else {
-      ctrl.stop = true;
-      if (verbose) safeLog(logger, `[consume] Ctrl+C received; stopping... queue=${queue}`);
+      if (verbose) safeLog(logger, `[consume] SIGINT; hard exit now (drain=false). queue=${queue}`);
+      process.exit(130);
     }
   };
 
