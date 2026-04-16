@@ -30,7 +30,7 @@ Core project / docs: https://github.com/not-empty/omniq
 ## Install
 
 ``` bash
-npm install omniq-node
+npm install omniq
 ```
 
 ------------------------------------------------------------------------
@@ -59,7 +59,7 @@ npm install omniq-node
 ### Publish (TypeScript)
 
 ``` ts
-import { OmniqClient } from "omniq-node";
+import { OmniqClient } from "omniq";
 
 async function main() {
   const omniq = await OmniqClient.create({
@@ -83,7 +83,7 @@ main();
 ### Consume (TypeScript)
 
 ``` ts
-import { OmniqClient } from "omniq-node";
+import { OmniqClient } from "omniq";
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
