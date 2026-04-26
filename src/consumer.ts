@@ -255,6 +255,7 @@ export async function consume(args: {
         payload_raw: res.payload,
         payload: payloadObj,
         attempt: res.attempt,
+        max_attempts: res.max_attempts,
         lock_until_ms: res.lock_until_ms,
         lease_token: res.lease_token,
         gid: res.gid,

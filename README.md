@@ -89,7 +89,9 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function handler(ctx: any) {
+import type { JobCtx } from "omniq-node";
+
+async function handler(ctx: JobCtx) {
   console.log("Waiting 2 seconds");
   await sleep(2000);
   console.log("Done");
@@ -126,10 +128,22 @@ Inside `handler(ctx)`:
 -   `payload_raw`
 -   `payload`
 -   `attempt`
+-   `max_attempts`
 -   `lock_until_ms`
 -   `lease_token`
 -   `gid`
 -   `exec`
+
+Example:
+
+```ts
+import type { JobCtx } from "omniq-node";
+
+async function handler(ctx: JobCtx) {
+  const isLastAttempt = ctx.attempt >= ctx.max_attempts;
+  console.log("Last attempt?", isLastAttempt);
+}
+```
 
 ------------------------------------------------------------------------
 
@@ -152,7 +166,7 @@ await omniq.publish({
 ### Child Example
 
 ``` ts
-async function pageWorker(ctx: any) {
+async function pageWorker(ctx: JobCtx) {
   const remaining = await ctx.exec.child_ack(ctx.payload.completion_key);
 
   if (remaining === 0) {
@@ -241,7 +255,7 @@ When all child jobs complete, the counter reaches zero.
 ### Parent Example
 
 ```ts
-async function parentWorker(ctx: any) {
+async function parentWorker(ctx: JobCtx) {
   const { document_id, pages } = ctx.payload;
 
   await ctx.exec.childs_init(document_id, pages);
@@ -261,7 +275,7 @@ async function parentWorker(ctx: any) {
 ### Child Example
 
 ```ts
-async function pageWorker(ctx: any) {
+async function pageWorker(ctx: JobCtx) {
   const { page, completion_key } = ctx.payload;
 
   console.log(`Processing page ${page}`);
@@ -306,7 +320,7 @@ await omniq.publish({
 ## Pause and Resume Inside a Handler
 
 ```ts
-async function pauseExample(ctx: any) {
+async function pauseExample(ctx: JobCtx) {
   const paused = await ctx.exec.is_paused("test");
   console.log("Is paused:", paused);
 
@@ -338,4 +352,3 @@ See the `./examples` folder.
 ## License
 
 See repository license.
-

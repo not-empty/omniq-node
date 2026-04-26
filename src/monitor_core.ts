@@ -102,13 +102,15 @@ export class QueueMonitorCore {
 
   constructor(uq: MonitorHost) {
     this._uq = uq;
-    this._r = uq?.r ?? uq?.ops?.r ?? uq?._ops?.r ?? null;
+    const r = uq?.r ?? uq?.ops?.r ?? uq?._ops?.r;
 
-    if (this._r === null) {
+    if (!r) {
       throw new Error(
         "QueueMonitor needs redis access (inject from server, do not expose to UI callers)."
       );
     }
+
+    this._r = r;
   }
 
   private _base(queue: string): string {

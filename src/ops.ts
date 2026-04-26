@@ -208,7 +208,7 @@ export class OmniqOps {
       return paused;
     }
 
-    if (res[0] !== "JOB" || res.length < 7) {
+    if (res[0] !== "JOB" || res.length < 8) {
       throw new Error(`Unexpected RESERVE response: ${JSON.stringify(res)}`);
     }
 
@@ -218,8 +218,9 @@ export class OmniqOps {
       payload: String(res[2]),
       lock_until_ms: toInt(res[3]),
       attempt: toInt(res[4]),
-      gid: String(res[5] ?? ""),
-      lease_token: String(res[6] ?? ""),
+      max_attempts: toInt(res[5]),
+      gid: String(res[6] ?? ""),
+      lease_token: String(res[7] ?? ""),
     };
 
     return job;

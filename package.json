@@ -62,7 +62,6 @@
   },
   "dependencies": {
     "ioredis": "^5.9.3",
-    "omniq": "^1.0.0",
     "ulid": "^3.0.2"
   }
 }
