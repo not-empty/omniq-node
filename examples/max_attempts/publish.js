@@ -1,8 +1,9 @@
 import { OmniqClient } from "omniq";
 
 async function main() {
-  const redis_url = "redis://omniq-redis:6379/0";
-  const omniq = await OmniqClient.create({ redis_url });
+  const host = "omniq-redis";
+  const port = 6379;
+  const omniq = await OmniqClient.create({ host, port });
 
   const job_id = await omniq.publish({
     queue: "max-attempts",

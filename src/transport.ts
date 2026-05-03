@@ -8,7 +8,6 @@ const RedisCtor: any = (IORedisNS as any).default ?? (IORedisNS as any);
 export type RedisLike = RedisClient | ClusterClient;
 
 export interface RedisConnOpts {
-  redis_url?: string;
   host?: string;
   port?: number;
   db?: number;
@@ -18,9 +17,6 @@ export interface RedisConnOpts {
 
   socket_timeout_ms?: number;
   socket_connect_timeout_ms?: number;
-
-  cluster?: boolean;
-  cluster_nodes?: Array<{ host: string; port: number }>;
 }
 
 function looksLikeClusterError(e: unknown): boolean {
@@ -31,6 +27,8 @@ function looksLikeClusterError(e: unknown): boolean {
     (msg.includes("unknown command") && msg.includes("cluster")) ||
     msg.includes("this instance has cluster support disabled") ||
     msg.includes("only (p)subscribe") ||
+    msg.includes("none of startup nodes is available") ||
+    msg.includes("failed to refresh slots cache") ||
     msg.includes("moved") ||
     msg.includes("ask")
   );
@@ -38,7 +36,6 @@ function looksLikeClusterError(e: unknown): boolean {
 
 export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> {
   const {
-    redis_url,
     host,
     port = 6379,
     db = 0,
@@ -47,39 +44,28 @@ export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> 
     ssl = false,
     socket_timeout_ms,
     socket_connect_timeout_ms,
-    cluster = false,
-    cluster_nodes,
   } = opts;
 
   const tls = ssl ? {} : undefined;
 
-  if (redis_url && !cluster) {
-    const r: RedisClient = new RedisCtor(redis_url, {
-      connectTimeout: socket_connect_timeout_ms,
-      commandTimeout: socket_timeout_ms,
-    });
-    return r;
+  if (!host) {
+    throw new Error("RedisConnOpts requires host");
   }
 
-  if (!host && !cluster_nodes?.length) {
-    throw new Error("RedisConnOpts requires host (or redis_url / cluster_nodes)");
-  }
-
-  if (cluster) {
-    const seeds =
-      cluster_nodes && cluster_nodes.length > 0
-        ? cluster_nodes
-        : [{ host: host as string, port: Number(port) }];
-
-    const c: ClusterClient = new RedisCtor.Cluster(seeds, {
+  {
+    const c: ClusterClient = new RedisCtor.Cluster([{ host, port: Number(port) }], {
       redisOptions: {
         username,
         password,
         tls,
         connectTimeout: socket_connect_timeout_ms,
         commandTimeout: socket_timeout_ms,
+        enableOfflineQueue: false,
       },
+      slotsRefreshTimeout: socket_connect_timeout_ms,
+      clusterRetryStrategy: () => null,
     });
+    c.on("error", () => {});
 
     try {
       await c.ping();

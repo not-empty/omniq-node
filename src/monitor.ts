@@ -17,8 +17,8 @@ export class QueueMonitor {
     this._core = new QueueMonitorCore(uq);
   }
 
-  async list_queues(): Promise<string[]> {
-    return await this._core.list_queues();
+  async scan_queues(): Promise<string[]> {
+    return await this._core.scan_queues();
   }
 
   async stats(queue: string): Promise<QueueStats> {

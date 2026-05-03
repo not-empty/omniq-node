@@ -51,6 +51,8 @@ npm install omniq
     -   Fan-out execution with atomic completion tracking
 -   **Language-agnostic architecture**
     -   Producers and consumers can run in different runtimes
+-   **Cluster-first connection model**
+    -   Connect with `host` + `port`; the client auto-detects Redis Cluster and falls back to standalone Redis
 
 ------------------------------------------------------------------------
 
@@ -63,7 +65,8 @@ import { OmniqClient } from "omniq";
 
 async function main() {
   const omniq = await OmniqClient.create({
-    redisUrl: "redis://omniq-redis:6379/0",
+    host: "omniq-redis",
+    port: 6379,
   });
 
   const jobId = await omniq.publish({
@@ -84,12 +87,11 @@ main();
 
 ``` ts
 import { OmniqClient } from "omniq";
+import type { JobCtx } from "omniq";
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
-
-import type { JobCtx } from "omniq-node";
 
 async function handler(ctx: JobCtx) {
   console.log("Waiting 2 seconds");
@@ -99,7 +101,8 @@ async function handler(ctx: JobCtx) {
 
 async function main() {
   const omniq = await OmniqClient.create({
-    redisUrl: "redis://omniq-redis:6379/0",
+    host: "omniq-redis",
+    port: 6379,
   });
 
   await omniq.consume({
@@ -137,7 +140,7 @@ Inside `handler(ctx)`:
 Example:
 
 ```ts
-import type { JobCtx } from "omniq-node";
+import type { JobCtx } from "omniq";
 
 async function handler(ctx: JobCtx) {
   const isLastAttempt = ctx.attempt >= ctx.max_attempts;
@@ -184,6 +187,23 @@ Properties:
 
 ------------------------------------------------------------------------
 
+## Queue Discovery
+
+Use `scan_queues()` for queue discovery. It scans Redis for `*:stats` keys and is intended
+for admin/bootstrap flows rather than hot-path UI polling.
+
+```ts
+import { QueueMonitor } from "omniq";
+
+const monitor = new QueueMonitor(omniq);
+const queues = await monitor.scan_queues();
+console.log(queues);
+```
+
+Queue names are validated in the SDK and may contain only letters, numbers, `.`, `_`, and `-`.
+
+------------------------------------------------------------------------
+
 
 # Administrative Operations
 
@@ -192,7 +212,10 @@ All operations are atomic and executed via Redis Lua scripts.
 ## Retry Failed Job
 
 ```ts
-await omniq.retry_failed("demo", "jobId");
+await omniq.retry_failed({
+  queue: "demo",
+  job_id: "jobId",
+});
 ```
 
 ------------------------------------------------------------------------
@@ -200,10 +223,10 @@ await omniq.retry_failed("demo", "jobId");
 ## Retry Failed Batch
 
 ```ts
-const results = await omniq.retry_failed_batch(
-  "demo",
-  ["id1", "id2"]
-);
+const results = await omniq.retry_failed_batch({
+  queue: "demo",
+  job_ids: ["id1", "id2"],
+});
 ```
 
 ------------------------------------------------------------------------
@@ -211,7 +234,11 @@ const results = await omniq.retry_failed_batch(
 ## Remove Job
 
 ```ts
-await omniq.remove_job("demo", "jobId", "failed");
+await omniq.remove_job({
+  queue: "demo",
+  job_id: "jobId",
+  lane: "failed",
+});
 ```
 
 ------------------------------------------------------------------------
@@ -219,11 +246,11 @@ await omniq.remove_job("demo", "jobId", "failed");
 ## Remove Jobs Batch
 
 ```ts
-const results = await omniq.remove_jobs_batch(
-  "demo",
-  "failed",
-  ["id1", "id2"]
-);
+const results = await omniq.remove_jobs_batch({
+  queue: "demo",
+  lane: "failed",
+  job_ids: ["id1", "id2"],
+});
 ```
 
 ------------------------------------------------------------------------
@@ -231,9 +258,9 @@ const results = await omniq.remove_jobs_batch(
 ## Pause / Resume / IsPaused
 
 ```ts
-await omniq.pause("demo");
-const paused = await omniq.is_paused("demo");
-await omniq.resume("demo");
+await omniq.pause({ queue: "demo" });
+const paused = await omniq.is_paused({ queue: "demo" });
+await omniq.resume({ queue: "demo" });
 ```
 
 Pausing prevents new reservations; running jobs are not interrupted.
@@ -321,15 +348,15 @@ await omniq.publish({
 
 ```ts
 async function pauseExample(ctx: JobCtx) {
-  const paused = await ctx.exec.is_paused("test");
+  const paused = await ctx.exec.is_paused({ queue: "test" });
   console.log("Is paused:", paused);
 
-  await ctx.exec.pause("test");
+  await ctx.exec.pause({ queue: "test" });
 
-  const paused2 = await ctx.exec.is_paused("test");
+  const paused2 = await ctx.exec.is_paused({ queue: "test" });
   console.log("Is paused:", paused2);
 
-  await ctx.exec.resume("test");
+  await ctx.exec.resume({ queue: "test" });
 }
 ```
 
