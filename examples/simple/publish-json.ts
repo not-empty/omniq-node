@@ -22,8 +22,9 @@ class OrderCreated {
 }
 
 async function main() {
-  const redis_url = "redis://omniq-redis:6379/0";
-  const omniq = await OmniqClient.create({ redis_url });
+  const host = "omniq-redis";
+  const port = 6379;
+  const omniq = await OmniqClient.create({ host, port });
 
   const payload = new OrderCreated(
     "ORD-2026-0001",

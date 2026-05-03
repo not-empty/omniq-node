@@ -1,8 +1,31 @@
-export function queueBase(queueName: string): string {
-  if (queueName.includes("{") && queueName.includes("}")) {
-    return queueName;
+const QUEUE_NAME_MAX_LEN = 128;
+const QUEUE_NAME_RE = /^[A-Za-z0-9._-]+$/;
+
+export function validateQueueName(queueName: string, maxLen = QUEUE_NAME_MAX_LEN): string {
+  const value = queueName == null ? "" : String(queueName);
+
+  if (value === "") {
+    throw new Error("queue name is required");
   }
-  return `{${queueName}}`;
+
+  if (value !== value.trim()) {
+    throw new Error("queue name must not have leading or trailing whitespace");
+  }
+
+  if (value.length > maxLen) {
+    throw new Error(`queue name too long (max ${maxLen} chars)`);
+  }
+
+  if (!QUEUE_NAME_RE.test(value)) {
+    throw new Error("queue name contains invalid characters; allowed: letters, numbers, '.', '_', '-'");
+  }
+
+  return value;
+}
+
+export function queueBase(queueName: string): string {
+  const value = validateQueueName(queueName);
+  return `{${value}}`;
 }
 
 export function queueAnchor(queueName: string): string {

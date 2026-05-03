@@ -1,4 +1,4 @@
-import { queueBase } from "./helper.js";
+import { queueBase, validateQueueName } from "./helper.js";
 
 import type {
   GroupReady,
@@ -10,13 +10,11 @@ import type {
   QueueStats,
 } from "./monitor_models.js";
 
-const QUEUE_REGISTRY = "omniq:queues";
 const MAX_LIST_LIMIT = 25;
 const MAX_GROUP_LIMIT = 500;
+const QUEUE_SCAN_MATCH = "*:stats";
 
 type RedisMonitorLike = {
-  smembers?(key: string): Promise<unknown> | unknown;
-  sMembers?(key: string): Promise<unknown> | unknown;
   hgetall?(key: string): Promise<unknown> | unknown;
   hGetAll?(key: string): Promise<unknown> | unknown;
   exists?(key: string): Promise<number> | number;
@@ -29,6 +27,8 @@ type RedisMonitorLike = {
   zRevRange?(key: string, start: number, stop: number, opts?: unknown): Promise<unknown> | unknown;
   zscore?(key: string, member: string): Promise<unknown> | unknown;
   zScore?(key: string, member: string): Promise<unknown> | unknown;
+  scan?(cursor: string | number, matchToken: string, matchValue: string, countToken?: string, countValue?: number): Promise<unknown> | unknown;
+  nodes?(role?: string): unknown;
 };
 
 type MonitorHost = {
@@ -149,16 +149,6 @@ export class QueueMonitorCore {
     return `${base}:g:${gid}:limit`;
   }
 
-  private async _smembers(key: string): Promise<unknown[]> {
-    if (typeof this._r.sMembers === "function") {
-      return ((await this._r.sMembers(key)) as unknown[]) ?? [];
-    }
-    if (typeof this._r.smembers === "function") {
-      return ((await this._r.smembers(key)) as unknown[]) ?? [];
-    }
-    return [];
-  }
-
   private async _hgetall(key: string): Promise<Record<string, unknown>> {
     if (typeof this._r.hGetAll === "function") {
       return decodeHash(await this._r.hGetAll(key));
@@ -256,6 +246,52 @@ export class QueueMonitorCore {
     return null;
   }
 
+  private async _scanKeys(match: string): Promise<string[]> {
+    const scanNode = async (node: any): Promise<string[]> => {
+      if (!node || typeof node.scan !== "function") {
+        return [];
+      }
+
+      let cursor = "0";
+      const out: string[] = [];
+
+      do {
+        const raw = await node.scan(cursor, "MATCH", match, "COUNT", 200);
+        if (!Array.isArray(raw) || raw.length < 2) {
+          break;
+        }
+
+        cursor = String(raw[0] ?? "0");
+        const keys = Array.isArray(raw[1]) ? raw[1] : [];
+
+        for (const key of keys) {
+          const value = asString(key).trim();
+          if (value !== "") {
+            out.push(value);
+          }
+        }
+      } while (cursor !== "0");
+
+      return out;
+    };
+
+    const nodesFn = (this._r as any)?.nodes;
+    if (typeof nodesFn === "function") {
+      const nodes = await nodesFn.call(this._r, "master");
+      const all = new Set<string>();
+
+      for (const node of Array.isArray(nodes) ? nodes : []) {
+        for (const key of await scanNode(node)) {
+          all.add(key);
+        }
+      }
+
+      return Array.from(all).sort();
+    }
+
+    return await scanNode(this._r);
+  }
+
   private async _readJobMap(base: string, jobId: string): Promise<Record<string, unknown> | null> {
     const key = this._jobKey(base, jobId);
 
@@ -330,12 +366,24 @@ export class QueueMonitorCore {
     };
   }
 
-  async list_queues(): Promise<string[]> {
+  async scan_queues(): Promise<string[]> {
     try {
-      const bases = await this._smembers(QUEUE_REGISTRY);
-      const names = bases.map((x) => normalizeQueueName(asString(x))).filter((x) => x !== "");
-      names.sort();
-      return names;
+      const keys = await this._scanKeys(QUEUE_SCAN_MATCH);
+      const names = keys
+        .filter((x) => x.endsWith(":stats"))
+        .map((x) => normalizeQueueName(x.slice(0, -":stats".length)))
+        .filter((x) => {
+          if (x === "") return false;
+          try {
+            validateQueueName(x);
+            return true;
+          } catch {
+            return false;
+          }
+        });
+      const unique = Array.from(new Set(names));
+      unique.sort();
+      return unique;
     } catch {
       return [];
     }
@@ -385,7 +433,7 @@ export class QueueMonitorCore {
   }
 
   async stats_many(queues?: Iterable<string> | null): Promise<QueueStats[]> {
-    const target = queues ? Array.from(queues) : await this.list_queues();
+    const target = queues ? Array.from(queues) : await this.scan_queues();
     return await Promise.all(target.map(async (queue) => await this.stats(queue)));
   }
 

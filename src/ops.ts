@@ -11,7 +11,7 @@ import type { OmniqScripts } from "./scripts.js";
 
 import { nowMs } from "./clock.js";
 import { newUlid } from "./ids.js";
-import { queueAnchor, queueBase, childsAnchor, isPlainObject } from "./helper.js";
+import { queueAnchor, queueBase, childsAnchor, isPlainObject, validateQueueName } from "./helper.js";
 
 class AsyncMutex {
   private locked = false;
@@ -109,6 +109,7 @@ export class OmniqOps {
       );
     }
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
     const jid = job_id || newUlid();
@@ -153,6 +154,7 @@ export class OmniqOps {
   }
 
   async pause(args: { queue: string }): Promise<string> {
+    validateQueueName(args.queue);
     const anchor = queueAnchor(args.queue);
     const res = await this.evalshaWithNoScriptFallback(
       this.scripts.pause.sha,
@@ -164,6 +166,7 @@ export class OmniqOps {
   }
 
   async resume(args: { queue: string }): Promise<number> {
+    validateQueueName(args.queue);
     const anchor = queueAnchor(args.queue);
     const res = await this.evalshaWithNoScriptFallback(
       this.scripts.resume.sha,
@@ -176,6 +179,7 @@ export class OmniqOps {
   }
 
   async is_paused(args: { queue: string }): Promise<boolean> {
+    validateQueueName(args.queue);
     const base = queueBase(args.queue);
     const n = await (this.r as any).exists(`${base}:paused`);
     return Number(n) === 1;
@@ -184,6 +188,7 @@ export class OmniqOps {
   async reserve(args: { queue: string; now_ms_override?: number }): Promise<ReserveResult> {
     const { queue, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -234,6 +239,7 @@ export class OmniqOps {
   }): Promise<number> {
     const { queue, job_id, lease_token, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -271,6 +277,7 @@ export class OmniqOps {
   }): Promise<void> {
     const { queue, job_id, lease_token, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -307,6 +314,7 @@ export class OmniqOps {
   }): Promise<AckFailResult> {
     const { queue, job_id, lease_token, error = null, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -361,6 +369,7 @@ export class OmniqOps {
   }): Promise<number> {
     const { queue, max_promote = 1000, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -387,6 +396,7 @@ export class OmniqOps {
   }): Promise<number> {
     const { queue, max_reap = 1000, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -413,6 +423,7 @@ export class OmniqOps {
   }): Promise<number> {
     const { queue, job_id, default_ms = 60_000 } = args;
 
+    validateQueueName(queue);
     const base = queueBase(queue);
     const k_job = `${base}:job:${job_id}`;
     const v = await (this.r as any).hget(k_job, "timeout_ms");
@@ -428,6 +439,7 @@ export class OmniqOps {
   }): Promise<void> {
     const { queue, job_id, now_ms_override = 0 } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -465,6 +477,7 @@ export class OmniqOps {
       throw new Error("retry_failed_batch max is 100 job_ids per call");
     }
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
     const nms = now_ms_override || nowMs();
 
@@ -514,6 +527,7 @@ export class OmniqOps {
   }): Promise<string> {
     const { queue, job_id, lane } = args;
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
 
     const res = await this.evalshaWithNoScriptFallback(
@@ -550,6 +564,7 @@ export class OmniqOps {
       throw new Error("remove_jobs_batch max is 100 job_ids per call");
     }
 
+    validateQueueName(queue);
     const anchor = queueAnchor(queue);
 
     const argv: string[] = [String(lane), String(job_ids.length), ...job_ids];

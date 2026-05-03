@@ -26,9 +26,10 @@ async function pageWorker(ctx: JobCtx) {
 }
 
 async function main() {
-  const redis_url = (process.env.REDIS_URL || "redis://omniq-redis:6379/0").trim();
+  const host = String(process.env.REDIS_HOST || "omniq-redis").trim();
+  const port = Number(process.env.REDIS_PORT || 6379);
 
-  const omniq = await OmniqClient.create({ redis_url });
+  const omniq = await OmniqClient.create({ host, port });
 
   await omniq.consume({
     queue: "pages",
