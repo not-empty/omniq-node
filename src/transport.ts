@@ -27,6 +27,8 @@ function looksLikeClusterError(e: unknown): boolean {
     (msg.includes("unknown command") && msg.includes("cluster")) ||
     msg.includes("this instance has cluster support disabled") ||
     msg.includes("only (p)subscribe") ||
+    msg.includes("none of startup nodes is available") ||
+    msg.includes("failed to refresh slots cache") ||
     msg.includes("moved") ||
     msg.includes("ask")
   );
@@ -58,8 +60,12 @@ export async function buildRedisClient(opts: RedisConnOpts): Promise<RedisLike> 
         tls,
         connectTimeout: socket_connect_timeout_ms,
         commandTimeout: socket_timeout_ms,
+        enableOfflineQueue: false,
       },
+      slotsRefreshTimeout: socket_connect_timeout_ms,
+      clusterRetryStrategy: () => null,
     });
+    c.on("error", () => {});
 
     try {
       await c.ping();
